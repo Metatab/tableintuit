@@ -1,0 +1,7 @@
+"start","end","headers","comments","rows","columns","path","types"
+5,,"3,4","0,1",83,6,"crazy_body.xls","int,str,str,float,float,float"
+5,,"3,4","0,1",39,6,"crazy_headers.xls","str,str,str,str,str,str"
+1,,0,,301,6,"one_header_300_data_rows.xls","int,str,int,float,float,float"
+1,,0,,302,6,"one_header_300_row_one_footer.xls","int,str,int,float,float,float"
+5,,"3,4","0,1",305,6,"two_comments_two_headers_300_data_rows.xls","int,str,int,float,float,float"
+5,,"3,4","0,1",3007,6,"two_comments_two_headers_two_footers_3k_data_rows.xls","int,str,int,float,float,float"

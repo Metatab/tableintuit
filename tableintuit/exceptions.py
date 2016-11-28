@@ -10,3 +10,6 @@ Exceptions.
 class RowIntuitError(Exception):
     pass
 
+class StatsError(Exception):
+    pass
+

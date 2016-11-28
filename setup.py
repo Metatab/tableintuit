@@ -52,5 +52,10 @@ setup(
     author_email='eric@civicknowledge.com',
     url='https://github.com/CivicKnowledge/tableintuit.git',
     license='MIT',
-    classifiers=classifiers
+    classifiers=classifiers,
+    entry_points={
+        'console_scripts': [
+            'tintuit=tableintuit.cli:main',
+        ],
+    },
 )

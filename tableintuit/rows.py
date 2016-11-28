@@ -68,6 +68,7 @@ class RowIntuiter(object):
 
     @property
     def spec(self):
+        """Return a dict with values that can be fed directly into SelectiveRowGenerator"""
         return dict(
             headers=self.header_lines,
             start=self.start_line,
@@ -185,10 +186,19 @@ class RowIntuiter(object):
         :return:
         """
 
+        from .exceptions import RowIntuitError
+
         header_rows = []
         found_header = False
+        MIN_SKIP_ROWS = 30
 
-        data_pattern_skip_rows = min(30, len(head_rows) - 8)
+        try:
+            data_pattern_skip_rows = min(MIN_SKIP_ROWS, len(head_rows) - 8)
+
+        except TypeError:
+            # Hopefully b/c head_rows is a generator, not a sequence
+            raise RowIntuitError("Head_rows must be a sequence, not a generator or iterator")
+
 
         try:
             data_pattern, self.data_pattern_source, n_cols = self.data_pattern(head_rows[data_pattern_skip_rows:])

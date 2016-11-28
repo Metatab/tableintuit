@@ -231,8 +231,13 @@ class Column(object):
                             for test, testf in tests + [(None, None)]}
 
         # If it is more than 5% str, it's a str
-        if self.type_ratios[binary_type] > .05:
-            return binary_type, False
+
+        if self.type_ratios.get(text_type,0) + self.type_ratios.get(binary_type,0) > .05:
+            if self.type_counts[text_type] > 0:
+                return text_type, False
+
+            elif self.type_counts[binary_type] > 0:
+                return binary_type, False
 
         if self.type_counts[datetime.datetime] > 0:
             num_type = datetime.datetime
@@ -249,11 +254,11 @@ class Column(object):
         elif self.type_counts[int] > 0:
             num_type = int
 
-        elif self.type_counts[binary_type] > 0:
-            num_type = binary_type
-
         elif self.type_counts[text_type] > 0:
             num_type = text_type
+
+        elif self.type_counts[binary_type] > 0:
+            num_type = binary_type
 
         else:
             num_type = unknown
@@ -294,6 +299,7 @@ class TypeIntuiter(object):
     def process_header(self, row):
 
         header = row # Huh? Don't remember what this is for.
+
         for i, value in enumerate(row):
             if i not in header:
                 self._columns[i] = Column()
@@ -332,16 +338,35 @@ class TypeIntuiter(object):
         for i, row in enumerate(iter(source)):
             if skip_rows and i % skip_rows != 0:
                 continue
+
+            if i == 0:
+                self.process_header(row)
+                continue
+
             self.process_row(i, row)
 
         return self
 
     @property
     def columns(self):
+        return self._columns
 
-        for k, v in iteritems(self._columns):
-            v.position = k
-            yield v
+    def __getitem__(self, item):
+
+        try:
+            return self._columns[item]
+        except KeyError:
+            for k, v in self._columns.items():
+                if item == v.header:
+                    return v
+
+        raise KeyError(item)
+
+    @property
+    def is_ascii(self):
+        """return true if none of the columns have a resolved type of """
+        pass
+
 
     def __str__(self):
         from tabulate import tabulate
@@ -424,7 +449,7 @@ class TypeIntuiter(object):
 
     def _dump(self):
 
-        for v in self.columns:
+        for k,v in self.columns.items():
             d = {
                 'position': v.position,
                 'header': v.header,

@@ -166,7 +166,6 @@ class BasicTest(unittest.TestCase):
         self.assertEquals(50, ti[3].type_counts[unicode])
         self.assertEquals(text_type, ti[3].resolved_type)
 
-
     def test_stats(self):
         from csv import DictReader
         from rowgenerators import RowGenerator
@@ -195,9 +194,9 @@ class BasicTest(unittest.TestCase):
 
             ti = TypeIntuiter().run(rows)
 
-            header = [ c.header for c in ti.columns]
+            header = [ c.header for k, c in ti.columns.items()]
 
-            schema = [(c.header, c.resolved_type) for c in ti.columns]
+            schema = [(c.header, c.resolved_type) for k, c in ti.columns.items()]
 
             stats = Stats(schema).run(dict(zip(header, row)) for row in rows)
 

@@ -438,16 +438,19 @@ class TypeIntuiter(object):
         header[9] = 'uni'
         header[11] = 'dt'
 
+        print fields
+        print header
+
         rows = list()
 
         rows.append(header)
 
-        for d in self._dump():
+        for d in self.to_rows():
             rows.append([d[k] for k in fields])
 
         return rows
 
-    def _dump(self):
+    def to_rows(self):
 
         for k,v in self.columns.items():
             d = {

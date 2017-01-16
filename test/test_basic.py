@@ -58,7 +58,7 @@ class BasicTest(unittest.TestCase):
 
     def test_intuition_fails(self):
         from rowgenerators import RowGenerator
-        from tableintuit import  RowIntuiter
+        from tableintuit import RowIntuiter
 
         url = 'http://public.source.civicknowledge.com/example.com/row_intuit/headers_1.csv'
         ri = RowIntuiter().run(list(RowGenerator(url)))

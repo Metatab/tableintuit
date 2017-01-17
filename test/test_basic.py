@@ -1,5 +1,5 @@
 import unittest
-
+from six import text_type
 
 def df(*v):
     """Return a path to a test data file"""
@@ -47,7 +47,7 @@ class BasicTest(unittest.TestCase):
                     ri = RowIntuiter()
                     ri.run(rows)
                 except RowIntuitError as exc:
-                    print "Error: ", e, exc
+                    print("Error: ", e, exc)
 
                 if e['expect_start']:
                     self.assertEqual(int(e['expect_start']), ri.start_line)
@@ -63,7 +63,7 @@ class BasicTest(unittest.TestCase):
         url = 'http://public.source.civicknowledge.com/example.com/row_intuit/headers_1.csv'
         ri = RowIntuiter().run(list(RowGenerator(url)))
 
-        print ri.start_line, ri.header_lines
+        print(ri.start_line, ri.header_lines)
 
     def test_urltype(self):
 
@@ -80,7 +80,8 @@ class BasicTest(unittest.TestCase):
         from rowgenerators import RowGenerator as rg
 
         self.assertEqual('csv', rg('/foo/bar.csv').filetype)
-        self.assertEqual('zip', rg('file:///foo/bar.zip#foobar.csv').filetype)
+        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').filetype)
+        self.assertEqual('file', rg('file:///foo/bar.zip#foobar.csv').urltype)
         self.assertEqual('xls', rg('gs://foo/bar.xls?foo=bar').filetype)
 
     def test_filetype(self):
@@ -147,30 +148,32 @@ class BasicTest(unittest.TestCase):
 
             return ti
 
-        ti = run_ti(sources['types1'])
-        self.assertEquals(13,ti['float'].type_counts[float])
-        self.assertEquals(0, ti['float'].type_counts[int])
-        self.assertEquals(0, ti['float'].type_counts[str])
-        self.assertEquals(0,ti['int'].type_counts[float])
-        self.assertEquals(13, ti['int'].type_counts[int])
-        self.assertEquals(0, ti['int'].type_counts[unicode])
-
         ti = run_ti(sources['namesu8'])
+        print(ti)
         self.assertEquals(binary_type, ti[0].resolved_type)
         self.assertEquals(binary_type, ti[1].resolved_type)
         self.assertEquals(52, ti[2].count)
-        self.assertEquals(20, ti[2].type_counts[str])
-        self.assertEquals(32, ti[2].type_counts[unicode])
+        self.assertEquals(20, ti[2].type_counts[binary_type])
+        self.assertEquals(32, ti[2].type_counts[text_type])
         self.assertEquals(text_type, ti[2].resolved_type)
-        self.assertEquals(2, ti[3].type_counts[str])
-        self.assertEquals(50, ti[3].type_counts[unicode])
+        self.assertEquals(2, ti[3].type_counts[binary_type])
+        self.assertEquals(50, ti[3].type_counts[text_type])
         self.assertEquals(text_type, ti[3].resolved_type)
+
+        ti = run_ti(sources['types1'])
+        self.assertEquals(13,ti['float'].type_counts[float])
+        self.assertEquals(0, ti['float'].type_counts[int])
+        self.assertEquals(0, ti['float'].type_counts[binary_type])
+        self.assertEquals(0,ti['int'].type_counts[float])
+        self.assertEquals(13, ti['int'].type_counts[int])
+        self.assertEquals(0, ti['int'].type_counts[text_type])
+
 
     def test_stats(self):
         from csv import DictReader
         from rowgenerators import RowGenerator
         from tableintuit import SelectiveRowGenerator, TypeIntuiter, Stats
-
+        from six import text_type
         with open(df('stat_sources.csv')) as f:
             def proc_dict(d):
                 if d['headers']:
@@ -186,11 +189,11 @@ class BasicTest(unittest.TestCase):
             rg = RowGenerator(**e)
             srg = SelectiveRowGenerator(rg, **e)
             rows = list(srg)
-            print '----'
-            print e['name']
-            print len(rows)
-            print rows[0]
-            print rows[1]
+            print('----')
+            print(e['name'])
+            print(len(rows))
+            print(rows[0])
+            print(rows[1])
 
             ti = TypeIntuiter().run(rows)
 
@@ -200,7 +203,7 @@ class BasicTest(unittest.TestCase):
 
             stats = Stats(schema).run(dict(zip(header, row)) for row in rows)
 
-            print unicode(stats).encode('utf8')
+            print(text_type(stats).encode('utf8'))
 
 if __name__ == '__main__':
     unittest.main()

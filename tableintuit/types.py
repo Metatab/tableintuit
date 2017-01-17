@@ -375,8 +375,9 @@ class TypeIntuiter(object):
 
         results = self.results_table()
 
+
         if len(results) > 1:
-            o = '\n' + binary_type(tabulate(results[1:], results[0], tablefmt='pipe'))
+            o = '\n' + text_type(tabulate(results[1:], results[0], tablefmt='pipe'))
         else:
             o = ''
 
@@ -437,9 +438,6 @@ class TypeIntuiter(object):
         header[4] = 'codes'
         header[9] = 'uni'
         header[11] = 'dt'
-
-        print fields
-        print header
 
         rows = list()
 

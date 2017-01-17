@@ -1,4 +1,4 @@
-,"segment","urlfiletype","filetype","encoding","expect_start","expect_headers","n_rows","url","description"
+"name","segment","urlfiletype","filetype","encoding","expect_start","expect_headers","n_rows","url","description"
 "altname",,,,,1,0,10001,"http://public.source.civicknowledge.com/example.com/sources/simple-example-altnames.csv","Random data with alternate names"
 "csv_no_csv",,,"csv",,1,0,10001,"http://public.source.civicknowledge.com/example.com/sources/simple-example.foo","CSV file with wrong extension"
 "multiexcel",0,,,,5,"3,4",12004,"http://public.source.civicknowledge.com/example.com/sources/multisheet.xls","Multiple sheets in an Excel file"
@@ -21,4 +21,4 @@
 "headers2",,,,,7,"3,5",12010,"http://public.source.civicknowledge.com/example.com/row_intuit/headers_2.csv","Multiple headers with gaps"
 "headers3",,,,,7,"3,5",12010,"http://public.source.civicknowledge.com/example.com/row_intuit/headers_3.csv","Gaps and codes in data"
 "headers4",,,,,7,"0,1,5,6",12010,"http://public.source.civicknowledge.com/example.com/row_intuit/headers_4.csv","Centered title and many missing values"
-"facilities",,,,,1,0,5216,"https+socrata://chhs.data.ca.gov/api/views/tthg-z4mf","OSHPD List of Healthcare Facilities"
+"facilities",,,,,1,0,12336,"https+socrata://chhs.data.ca.gov/api/views/tthg-z4mf","OSHPD List of Healthcare Facilities"

@@ -30,8 +30,6 @@ _meta = imp.load_source('_meta', 'tableintuit/__meta__.py')
 packages = find_packages()
 
 
-install_requires = parse_requirements('requirements.txt', session=uuid.uuid1())
-
 classifiers = [
     'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
@@ -47,7 +45,12 @@ setup(
     description='Guess the structure and datatypes of row data, such as from a spreadsheet',
     long_description=readme,
     packages=packages,
-    install_requires=[x for x in reversed([str(x.req) for x in install_requires])],
+    install_requires=[
+        'tabulate'
+    ],
+
+    dependency_links=[
+    ],
     author=_meta.__author__,
     author_email='eric@civicknowledge.com',
     url='https://github.com/CivicKnowledge/tableintuit.git',

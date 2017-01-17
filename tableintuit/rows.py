@@ -276,7 +276,6 @@ class RowIntuiter(object):
             if end_line:
                 self.end_line = n_rows-end_line-1
 
-
         return self
 
     @classmethod

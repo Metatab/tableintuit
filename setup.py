@@ -49,8 +49,6 @@ setup(
         'tabulate'
     ],
 
-    dependency_links=[
-    ],
     author=_meta.__author__,
     author_email='eric@civicknowledge.com',
     url='https://github.com/CivicKnowledge/tableintuit.git',

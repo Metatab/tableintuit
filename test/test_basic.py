@@ -1,30 +1,30 @@
 import unittest
 from six import text_type
 
+
 def df(*v):
     """Return a path to a test data file"""
     from os.path import dirname, join
 
-    return join(dirname(__file__), 'test_data',*v)
+    return join(dirname(__file__), 'test_data', *v)
+
 
 class BasicTest(unittest.TestCase):
-
     def test_row_intuition(self):
 
         from csv import DictReader
         from rowgenerators import RowGenerator
         from tableintuit import TypeIntuiter, RowIntuiter
 
-        with open(df('rows','sources.csv')) as f:
-
+        with open(df('rows', 'sources.csv')) as f:
             for e in DictReader(f):
-                rows = list(RowGenerator(df('rows',e['path'])))
-                self.assertEquals( int(e['rows']), len(rows))
+                rows = list(RowGenerator(df('rows', e['path'])))
+                self.assertEquals(int(e['rows']), len(rows))
 
                 ri = RowIntuiter()
                 ri.run(rows)
-                self.assertEqual(int(e['start']),  ri.start_line)
-                self.assertEqual(e['comments'],  ','.join( str(e) for e in ri.comment_lines))
+                self.assertEqual(int(e['start']), ri.start_line)
+                self.assertEqual(e['comments'], ','.join(str(e) for e in ri.comment_lines))
                 self.assertEqual(e['headers'], ','.join(str(e) for e in ri.header_lines))
 
     def test_row_intuition_rowgen(self):
@@ -32,11 +32,12 @@ class BasicTest(unittest.TestCase):
         are direct input to a RowGenerator"""
         from csv import DictReader
         from rowgenerators import RowGenerator
-        from tableintuit import TypeIntuiter, RowIntuiter, RowIntuitError
+        from tableintuit import RowIntuiter, RowIntuitError
 
         with open(df('rowgen_sources.csv')) as f:
             for e in DictReader(f):
-                #print e['name']
+
+
                 gen = RowGenerator(**e)
 
                 rows = list(gen)
@@ -55,13 +56,14 @@ class BasicTest(unittest.TestCase):
                 if e['expect_headers']:
                     self.assertEquals(e['expect_headers'], ','.join(str(e) for e in ri.header_lines))
 
-
     def test_intuition_fails(self):
         from rowgenerators import RowGenerator
         from tableintuit import RowIntuiter
 
         url = 'http://public.source.civicknowledge.com/example.com/row_intuit/headers_1.csv'
-        ri = RowIntuiter().run(list(RowGenerator(url)))
+        rg = RowGenerator(url)
+        rows = list(rg)
+        ri = RowIntuiter().run(rows)
 
         print(ri.start_line, ri.header_lines)
 
@@ -76,21 +78,20 @@ class BasicTest(unittest.TestCase):
         self.assertEqual('http', rg('http://foo/bar.zip').urltype)
         self.assertEqual('http', rg('https://foo/bar.zip').urltype)
 
-    def test_urlfiletype(self):
-        from rowgenerators import RowGenerator as rg
-
-        self.assertEqual('csv', rg('/foo/bar.csv').filetype)
-        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').filetype)
+        self.assertEqual('csv', rg('/foo/bar.csv').format)
+        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').format)
         self.assertEqual('file', rg('file:///foo/bar.zip#foobar.csv').urltype)
-        self.assertEqual('xls', rg('gs://foo/bar.xls?foo=bar').filetype)
+        self.assertEqual('csv', rg('gs://blahblahblah').format)
+
+        self.assertEqual('csv', rg('http://example.com/sources/simple-example.csv.zip').format)
 
     def test_filetype(self):
 
         from rowgenerators import RowGenerator as rg
 
-        self.assertEqual('csv', rg('/foo/bar.csv').filetype)
-        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').filetype)
-        self.assertEqual('xls', rg('gs://foo/bar.xls?foo=bar').filetype)
+        self.assertEqual('csv', rg('/foo/bar.csv').format)
+        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').format)
+        self.assertEqual('csv', rg('gs://foo/blahblahblah?foo=bar').format)
 
     def test_selective(self):
         from csv import DictReader
@@ -99,16 +100,16 @@ class BasicTest(unittest.TestCase):
         from tableintuit import SelectiveRowGenerator
         from itertools import islice
 
-        rows = [ ['header1']] + [ ['header2']]+ [ [i] for i in range(10) ]
+        rows = [['header1']] + [['header2']] + [[i] for i in range(10)]
 
-        rg = SelectiveRowGenerator(rows, start=5, headers=[0,1], comments=[2,3], end=9)
+        rg = SelectiveRowGenerator(rows, start=5, headers=[0, 1], comments=[2, 3], end=9)
 
         self.assertEquals([[u'header1 header2'], [3], [4], [5], [6], [7], [8], [9]], list(rg))
         self.assertEqual([['header1'], ['header2']], rg.headers)
-        self.assertEqual([[0],[1]], rg.comments)
+        self.assertEqual([[0], [1]], rg.comments)
 
         with open(df('rowgen_sources.csv')) as f:
-            sources = { e['name']:e for e in DictReader(f)}
+            sources = {e['name']: e for e in DictReader(f)}
 
         rg = RowGenerator(**sources['rentcsv'])
         ri = RowIntuiter().run(list(rg))
@@ -161,13 +162,12 @@ class BasicTest(unittest.TestCase):
         self.assertEquals(text_type, ti[3].resolved_type)
 
         ti = run_ti(sources['types1'])
-        self.assertEquals(13,ti['float'].type_counts[float])
+        self.assertEquals(13, ti['float'].type_counts[float])
         self.assertEquals(0, ti['float'].type_counts[int])
         self.assertEquals(0, ti['float'].type_counts[binary_type])
-        self.assertEquals(0,ti['int'].type_counts[float])
+        self.assertEquals(0, ti['int'].type_counts[float])
         self.assertEquals(13, ti['int'].type_counts[int])
         self.assertEquals(0, ti['int'].type_counts[text_type])
-
 
     def test_stats(self):
         from csv import DictReader
@@ -177,15 +177,14 @@ class BasicTest(unittest.TestCase):
         with open(df('stat_sources.csv')) as f:
             def proc_dict(d):
                 if d['headers']:
-                    d['headers'] = [ int(e) for e in d['headers'].split(',')]
+                    d['headers'] = [int(e) for e in d['headers'].split(',')]
                 if d['start']:
                     d['start'] = int(d['start'])
                 return d
 
-            sources = { e['name']:proc_dict(e) for e in DictReader(f)}
+            sources = {e['name']: proc_dict(e) for e in DictReader(f)}
 
         for k, e in sources.items():
-
             rg = RowGenerator(**e)
             srg = SelectiveRowGenerator(rg, **e)
             rows = list(srg)
@@ -197,13 +196,16 @@ class BasicTest(unittest.TestCase):
 
             ti = TypeIntuiter().run(rows)
 
-            header = [ c.header for k, c in ti.columns.items()]
+            header = [c.header for k, c in ti.columns.items()]
 
             schema = [(c.header, c.resolved_type) for k, c in ti.columns.items()]
 
             stats = Stats(schema).run(dict(zip(header, row)) for row in rows)
 
             print(text_type(stats).encode('utf8'))
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

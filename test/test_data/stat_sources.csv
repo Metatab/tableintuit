@@ -22,4 +22,4 @@
 "headers2",,,,,7,"3,5",12010,"http://public.source.civicknowledge.com/example.com/row_intuit/headers_2.csv","Multiple headers with gaps"
 "headers3",,,,,7,"3,5",12010,"http://public.source.civicknowledge.com/example.com/row_intuit/headers_3.csv","Gaps and codes in data"
 "headers4",,,,,7,"0,1,5,6",12010,"http://public.source.civicknowledge.com/example.com/row_intuit/headers_4.csv","Centered title and many missing values"
-"facilities",,,,,1,0,5216,"http+socrata://chhs.data.ca.gov/api/views/tthg-z4mf","OSHPD List of Healthcare Facilities"
+"facilities",,,,,1,0,5216,"socrata+http://chhs.data.ca.gov/api/views/tthg-z4mf","OSHPD List of Healthcare Facilities"

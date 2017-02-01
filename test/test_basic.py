@@ -18,7 +18,10 @@ class BasicTest(unittest.TestCase):
 
         with open(df('rows', 'sources.csv')) as f:
             for e in DictReader(f):
-                rows = list(RowGenerator(df('rows', e['path'])))
+
+                path = df('rows', e['path'])
+
+                rows = list(RowGenerator(path))
                 self.assertEquals(int(e['rows']), len(rows))
 
                 ri = RowIntuiter()

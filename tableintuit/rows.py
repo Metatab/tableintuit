@@ -304,6 +304,21 @@ class RowIntuiter(object):
         headers = [' '.join(text_type(col_val).strip() if col_val else '' for col_val in col_set)
                    for col_set in zip(*header_lines)]
 
-        headers = [re.sub(r'\s+', ' ', h.strip()) for h in headers]
+        headers = [slugify(h.strip()) for h in headers]
 
         return headers
+
+# From http://stackoverflow.com/a/295466
+def slugify(value):
+    """
+    Normalizes string, converts to lowercase, removes non-alpha characters,
+    and converts spaces to hyphens.type(
+    """
+    import re
+    import unicodedata
+    from six import text_type
+    value = text_type(value)
+    value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('utf8')
+    value = re.sub(r'[^\w\s-]', '', value).strip().lower()
+    value = re.sub(r'[-\s]+', '_', value)
+    return value

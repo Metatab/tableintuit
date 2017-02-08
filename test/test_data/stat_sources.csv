@@ -1,4 +1,4 @@
-"name","segment","urlfiletype","filetype","encoding","start","headers","n_rows","url","description"
+"name","target_segment","resource_format","target_format","encoding","start","headers","n_rows","url","description"
 "altname",,,,,1,0,10001,"http://public.source.civicknowledge.com/example.com/sources/simple-example-altnames.csv","Random data with alternate names"
 "csv_no_csv",,,"csv",,1,0,10001,"http://public.source.civicknowledge.com/example.com/sources/simple-example.foo","CSV file with wrong extension"
 "multiexcel",0,,,,5,"3,4",12004,"http://public.source.civicknowledge.com/example.com/sources/multisheet.xls","Multiple sheets in an Excel file"

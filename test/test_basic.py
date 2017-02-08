@@ -10,6 +10,7 @@ def df(*v):
 
 
 class BasicTest(unittest.TestCase):
+
     def test_row_intuition(self):
 
         from csv import DictReader
@@ -26,6 +27,7 @@ class BasicTest(unittest.TestCase):
 
                 ri = RowIntuiter()
                 ri.run(rows)
+
                 self.assertEqual(int(e['start']), ri.start_line)
                 self.assertEqual(e['comments'], ','.join(str(e) for e in ri.comment_lines))
                 self.assertEqual(e['headers'], ','.join(str(e) for e in ri.header_lines))
@@ -39,7 +41,6 @@ class BasicTest(unittest.TestCase):
 
         with open(df('rowgen_sources.csv')) as f:
             for e in DictReader(f):
-
 
                 gen = RowGenerator(**e)
 
@@ -74,27 +75,27 @@ class BasicTest(unittest.TestCase):
 
         from rowgenerators import RowGenerator as rg
 
-        self.assertEqual('file', rg('/foo/bar.zip').urltype)
-        self.assertEqual('file', rg('file:///foo/bar.zip').urltype)
-        self.assertEqual('gs', rg('gs://foo/bar.zip').urltype)
-        self.assertEqual('socrata', rg('socrata://foo/bar.zip').urltype)
-        self.assertEqual('http', rg('http://foo/bar.zip').urltype)
-        self.assertEqual('http', rg('https://foo/bar.zip').urltype)
+        self.assertEqual('file', rg('/foo/bar.zip').proto)
+        self.assertEqual('file', rg('file:///foo/bar.zip').proto)
+        self.assertEqual('gs', rg('gs://foo/bar.zip').proto)
+        self.assertEqual('socrata', rg('socrata://foo/bar.zip').proto)
+        self.assertEqual('http', rg('http://foo/bar.zip').proto)
+        self.assertEqual('http', rg('https://foo/bar.zip').proto)
 
-        self.assertEqual('csv', rg('/foo/bar.csv').format)
-        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').format)
-        self.assertEqual('file', rg('file:///foo/bar.zip#foobar.csv').urltype)
-        self.assertEqual('csv', rg('gs://blahblahblah').format)
+        self.assertEqual('csv', rg('/foo/bar.csv').target_format)
+        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').target_format)
+        self.assertEqual('file', rg('file:///foo/bar.zip#foobar.csv').proto)
+        self.assertEqual('csv', rg('gs://blahblahblah').target_format)
 
-        self.assertEqual('csv', rg('http://example.com/sources/simple-example.csv.zip').format)
+        self.assertEqual('csv', rg('http://example.com/sources/simple-example.csv.zip').target_format)
 
     def test_filetype(self):
 
         from rowgenerators import RowGenerator as rg
 
-        self.assertEqual('csv', rg('/foo/bar.csv').format)
-        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').format)
-        self.assertEqual('csv', rg('gs://foo/blahblahblah?foo=bar').format)
+        self.assertEqual('csv', rg('/foo/bar.csv').target_format)
+        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').target_format)
+        self.assertEqual('csv', rg('gs://foo/blahblahblah?foo=bar').target_format)
 
     def test_selective(self):
         from csv import DictReader

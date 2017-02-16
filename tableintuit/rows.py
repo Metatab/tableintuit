@@ -85,7 +85,11 @@ class RowIntuiter(object):
 
         def guess_type(v):
 
-            v = text_type(v).strip()
+            try:
+                v = text_type(v).strip()
+            except ValueError:
+                v = binary_type(v).strip()
+                #v = v.decode('ascii', 'replace').strip()
 
             if not bool(v):
                 return type(None)
@@ -97,12 +101,14 @@ class RowIntuiter(object):
                     pass
 
         def p(e):
+            tm = t = None
+
             try:
                 t = guess_type(e)
                 tm = self.type_map.get(t, t)
                 return template[types.index(tm)]
-            except ValueError:
-                raise ValueError("Type '{}'/'{}' not in the types list: {}".format(t, tm, types))
+            except ValueError as e:
+                raise ValueError("Type '{}'/'{}' not in the types list: {} ({})".format(t, tm, types, e))
 
         return ''.join(p(e) for e in row)
 

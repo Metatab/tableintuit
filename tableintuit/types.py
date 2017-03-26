@@ -35,6 +35,19 @@ class unknown(binary_type):
     def __eq__(self, other):
         return binary_type(self) == binary_type(other)
 
+class geotype(binary_type):
+
+    __name__ = 'geo'
+
+    def __new__(cls):
+        return super(geotype, cls).__new__(cls, cls.__name__)
+
+    def __str__(self):
+        return self.__name__
+
+    def __eq__(self, other):
+        return binary_type(self) == binary_type(other)
+
 
 def test_float(v):
     # Fixed-width integer codes are actually strings.
@@ -126,11 +139,16 @@ def test_date(v):
 
     return 1
 
+def test_geo(v):
+    print("!!!!", v)
+    return 0
+
 
 tests = [
     (int, test_int),
     (float, test_float),
     (binary_type, test_string),
+    (geotype, test_geo)
 ]
 
 
@@ -232,12 +250,17 @@ class Column(object):
 
         # If it is more than 5% str, it's a str
 
-        if self.type_ratios.get(text_type,0) + self.type_ratios.get(binary_type,0) > .05:
-            if self.type_counts[text_type] > 0:
-                return text_type, False
+        try:
+            if self.type_ratios.get(text_type,0) + self.type_ratios.get(binary_type,0) > .05:
+                if self.type_counts[text_type] > 0:
+                    return text_type, False
 
-            elif self.type_counts[binary_type] > 0:
-                return binary_type, False
+                elif self.type_counts[binary_type] > 0:
+                    return binary_type, False
+        except TypeError as e:
+            # This is probably the result of the type being unknown
+            pass
+
 
         if self.type_counts[datetime.datetime] > 0:
             num_type = datetime.datetime

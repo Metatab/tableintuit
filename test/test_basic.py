@@ -1,6 +1,6 @@
 import unittest
 from six import text_type
-
+from rowgenerators import SourceSpec
 
 def df(*v):
     """Return a path to a test data file"""
@@ -73,29 +73,27 @@ class BasicTest(unittest.TestCase):
 
     def test_urltype(self):
 
-        from rowgenerators import RowGenerator as rg
 
-        self.assertEqual('file', rg('/foo/bar.zip').proto)
-        self.assertEqual('file', rg('file:///foo/bar.zip').proto)
-        self.assertEqual('gs', rg('gs://foo/bar.zip').proto)
-        self.assertEqual('socrata', rg('socrata://foo/bar.zip').proto)
-        self.assertEqual('http', rg('http://foo/bar.zip').proto)
-        self.assertEqual('http', rg('https://foo/bar.zip').proto)
 
-        self.assertEqual('csv', rg('/foo/bar.csv').target_format)
-        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').target_format)
-        self.assertEqual('file', rg('file:///foo/bar.zip#foobar.csv').proto)
-        self.assertEqual('csv', rg('gs://blahblahblah').target_format)
+        self.assertEqual('file', SourceSpec('/foo/bar.zip').proto)
+        self.assertEqual('file', SourceSpec('file:///foo/bar.zip').proto)
+        self.assertEqual('gs', SourceSpec('gs://foo/bar.zip').proto)
+        self.assertEqual('socrata', SourceSpec('socrata://foo/bar.zip').proto)
+        self.assertEqual('http', SourceSpec('http://foo/bar.zip').proto)
+        self.assertEqual('http', SourceSpec('https://foo/bar.zip').proto)
 
-        self.assertEqual('csv', rg('http://example.com/sources/simple-example.csv.zip').target_format)
+        self.assertEqual('csv', SourceSpec('/foo/bar.csv').target_format)
+        self.assertEqual('csv', SourceSpec('file:///foo/bar.zip#foobar.csv').target_format)
+        self.assertEqual('file', SourceSpec('file:///foo/bar.zip#foobar.csv').proto)
+        self.assertEqual('csv', SourceSpec('gs://blahblahblah').target_format)
+
+        self.assertEqual('csv', SourceSpec('http://example.com/sources/simple-example.csv.zip').target_format)
 
     def test_filetype(self):
 
-        from rowgenerators import RowGenerator as rg
-
-        self.assertEqual('csv', rg('/foo/bar.csv').target_format)
-        self.assertEqual('csv', rg('file:///foo/bar.zip#foobar.csv').target_format)
-        self.assertEqual('csv', rg('gs://foo/blahblahblah?foo=bar').target_format)
+        self.assertEqual('csv', SourceSpec('/foo/bar.csv').target_format)
+        self.assertEqual('csv', SourceSpec('file:///foo/bar.zip#foobar.csv').target_format)
+        self.assertEqual('csv', SourceSpec('gs://foo/blahblahblah?foo=bar').target_format)
 
     def test_selective(self):
         from csv import DictReader

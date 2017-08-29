@@ -1,6 +1,10 @@
 import unittest
-from six import text_type
-from rowgenerators import SourceSpec
+
+from appurl import parse_app_url
+from csv import DictReader
+from rowgenerators import get_generator, SelectiveRowGenerator
+from tableintuit import RowIntuiter, RowIntuitError
+from tableintuit import TypeIntuiter, Stats
 
 def df(*v):
     """Return a path to a test data file"""
@@ -13,16 +17,16 @@ class BasicTest(unittest.TestCase):
 
     def test_row_intuition(self):
 
-        from csv import DictReader
-        from rowgenerators import RowGenerator
-        from tableintuit import TypeIntuiter, RowIntuiter
+
 
         with open(df('rows', 'sources.csv')) as f:
             for e in DictReader(f):
 
                 path = df('rows', e['path'])
 
-                rows = list(RowGenerator(path))
+                gen = get_generator(parse_app_url(path).get_resource().get_target())
+
+                rows = list(gen)
                 self.assertEquals(int(e['rows']), len(rows))
 
                 ri = RowIntuiter()
@@ -36,13 +40,11 @@ class BasicTest(unittest.TestCase):
         """Like test_row_intuition, but the dict read rows from the csv file
         are direct input to a RowGenerator"""
         from csv import DictReader
-        from rowgenerators import RowGenerator
-        from tableintuit import RowIntuiter, RowIntuitError
 
         with open(df('rowgen_sources.csv')) as f:
             for e in DictReader(f):
-
-                gen = RowGenerator(**e)
+                print(e['name'])
+                gen = get_generator(e['url'])
 
                 rows = list(gen)
 
@@ -61,11 +63,11 @@ class BasicTest(unittest.TestCase):
                     self.assertEquals(e['expect_headers'], ','.join(str(e) for e in ri.header_lines))
 
     def test_intuition_fails(self):
-        from rowgenerators import RowGenerator
+
         from tableintuit import RowIntuiter
 
         url = 'http://public.source.civicknowledge.com/example.com/row_intuit/headers_1.csv'
-        rg = RowGenerator(url)
+        rg = get_generator(parse_app_url(url).get_resource().get_target())
         rows = list(rg)
         ri = RowIntuiter().run(rows)
 
@@ -75,31 +77,30 @@ class BasicTest(unittest.TestCase):
 
 
 
-        self.assertEqual('file', SourceSpec('/foo/bar.zip').proto)
-        self.assertEqual('file', SourceSpec('file:///foo/bar.zip').proto)
-        self.assertEqual('gs', SourceSpec('gs://foo/bar.zip').proto)
-        self.assertEqual('socrata', SourceSpec('socrata://foo/bar.zip').proto)
-        self.assertEqual('http', SourceSpec('http://foo/bar.zip').proto)
-        self.assertEqual('http', SourceSpec('https://foo/bar.zip').proto)
+        self.assertEqual('file', parse_app_url('/foo/bar.zip').proto)
+        self.assertEqual('file', parse_app_url('file:///foo/bar.zip').proto)
+        self.assertEqual('gs', parse_app_url('gs://foo/bar.zip').proto)
+        self.assertEqual('socrata', parse_app_url('socrata://foo/bar.zip').proto)
+        self.assertEqual('http', parse_app_url('http://foo/bar.zip').proto)
+        self.assertEqual('http', parse_app_url('https://foo/bar.zip').proto)
 
-        self.assertEqual('csv', SourceSpec('/foo/bar.csv').target_format)
-        self.assertEqual('csv', SourceSpec('file:///foo/bar.zip#foobar.csv').target_format)
-        self.assertEqual('file', SourceSpec('file:///foo/bar.zip#foobar.csv').proto)
-        self.assertEqual('csv', SourceSpec('gs://blahblahblah').target_format)
+        self.assertEqual('csv', parse_app_url('/foo/bar.csv').target_format)
+        self.assertEqual('csv', parse_app_url('file:///foo/bar.zip#foobar.csv').target_format)
+        self.assertEqual('file', parse_app_url('file:///foo/bar.zip#foobar.csv').proto)
+        #self.assertEqual('csv', parse_app_url('gs://blahblahblah').target_format)
 
-        self.assertEqual('csv', SourceSpec('http://example.com/sources/simple-example.csv.zip').target_format)
+        self.assertEqual('csv', parse_app_url('http://public.source.civicknowledge.com/example.com/sources/simple-example.csv.zip')
+                         .get_resource().get_target().target_format)
 
     def test_filetype(self):
 
-        self.assertEqual('csv', SourceSpec('/foo/bar.csv').target_format)
-        self.assertEqual('csv', SourceSpec('file:///foo/bar.zip#foobar.csv').target_format)
-        self.assertEqual('csv', SourceSpec('gs://foo/blahblahblah?foo=bar').target_format)
+        self.assertEqual('csv', parse_app_url('/foo/bar.csv').target_format)
+        self.assertEqual('csv', parse_app_url('file:///foo/bar.zip#foobar.csv').target_format)
+        #self.assertEqual('csv', parse_app_url('gs://foo/blahblahblah?foo=bar').target_format)
 
     def test_selective(self):
         from csv import DictReader
-        from rowgenerators import RowGenerator
         from tableintuit import RowIntuiter
-        from tableintuit import SelectiveRowGenerator
         from itertools import islice
 
         rows = [['header1']] + [['header2']] + [[i] for i in range(10)]
@@ -113,7 +114,7 @@ class BasicTest(unittest.TestCase):
         with open(df('rowgen_sources.csv')) as f:
             sources = {e['name']: e for e in DictReader(f)}
 
-        rg = RowGenerator(**sources['rentcsv'])
+        rg = get_generator(sources['rentcsv']['url'])
         ri = RowIntuiter().run(list(rg))
 
         rows = list(islice(SelectiveRowGenerator(rg, **ri.spec), 100))
@@ -128,9 +129,7 @@ class BasicTest(unittest.TestCase):
                          rows[1])
 
     def test_type_intuition(self):
-        from csv import DictReader
-        from rowgenerators import RowGenerator
-        from tableintuit import SelectiveRowGenerator, TypeIntuiter
+
         from six import binary_type, text_type
 
         with open(df('stat_sources.csv')) as f:
@@ -144,7 +143,7 @@ class BasicTest(unittest.TestCase):
             sources = {e['name']: proc_dict(e) for e in DictReader(f)}
 
         def run_ti(e):
-            rg = RowGenerator(**e)
+            rg = get_generator(e['url'])
             srg = SelectiveRowGenerator(rg, **e)
             rows = list(srg)
             ti = TypeIntuiter().run(rows)
@@ -172,10 +171,7 @@ class BasicTest(unittest.TestCase):
         self.assertEquals(0, ti['int'].type_counts[text_type])
 
     def test_stats(self):
-        from csv import DictReader
-        from rowgenerators import RowGenerator
-        from tableintuit import SelectiveRowGenerator, TypeIntuiter, Stats
-        from six import text_type
+
         with open(df('stat_sources.csv')) as f:
             def proc_dict(d):
                 if d['headers']:
@@ -187,7 +183,8 @@ class BasicTest(unittest.TestCase):
             sources = {e['name']: proc_dict(e) for e in DictReader(f)}
 
         for k, e in sources.items():
-            rg = RowGenerator(**e)
+
+            rg = get_generator(e['url'])
             srg = SelectiveRowGenerator(rg, **e)
             rows = list(srg)
             print('----')
@@ -204,7 +201,7 @@ class BasicTest(unittest.TestCase):
 
             stats = Stats(schema).run(dict(zip(header, row)) for row in rows)
 
-            print(text_type(stats).encode('utf8'))
+            print(str(stats).encode('utf8'))
 
 
 

@@ -5,5 +5,4 @@
 from .exceptions import *
 from .rows import *
 from .types import *
-from .generators import SelectiveRowGenerator
 from .stats import Stats

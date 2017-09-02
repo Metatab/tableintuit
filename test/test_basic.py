@@ -89,8 +89,8 @@ class BasicTest(unittest.TestCase):
         self.assertEqual('file', parse_app_url('file:///foo/bar.zip#foobar.csv').proto)
         #self.assertEqual('csv', parse_app_url('gs://blahblahblah').target_format)
 
-        self.assertEqual('csv', parse_app_url('http://public.source.civicknowledge.com/example.com/sources/simple-example.csv.zip')
-                         .get_resource().get_target().target_format)
+        self.assertEqual('csv', parse_app_url(
+            'http://public.source.civicknowledge.com/example.com/sources/simple-example.csv.zip').get_target().target_format)
 
     def test_filetype(self):
 

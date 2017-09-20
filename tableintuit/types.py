@@ -140,7 +140,7 @@ def test_date(v):
     return 1
 
 def test_geo(v):
-    print("!!!!", v)
+
     return 0
 
 

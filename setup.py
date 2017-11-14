@@ -51,7 +51,7 @@ setup(
 
     author=_meta.__author__,
     author_email='eric@civicknowledge.com',
-    url='https://github.com/CivicKnowledge/tableintuit.git',
+    url='https://github.com/Metatab/tableintuit.git',
     license='MIT',
     classifiers=classifiers,
     entry_points={

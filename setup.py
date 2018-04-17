@@ -8,7 +8,6 @@ from setuptools import find_packages
 import uuid
 import imp
 
-from pip.req import parse_requirements
 
 try:
     from setuptools import setup

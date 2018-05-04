@@ -7,11 +7,11 @@ Copyright (c) 2015 Civic Knowledge. This file is licensed under the terms of the
 Revised BSD License, included in this distribution as LICENSE.txt
 """
 
-from collections import Counter, OrderedDict
-from livestats import livestats
 import logging
+import datetime
+from collections import Counter, OrderedDict
 
-from six import iteritems, iterkeys, u, string_types, binary_type, text_type
+from livestats import livestats
 
 from .exceptions import StatsError
 
@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 def text_hist(nums, ascii=False):
 
     if ascii:
-        parts = u(' _.,,-=T#')
+        parts = ' _.,,-=T#'
     else:
-        parts = u(' ▁▂▃▄▅▆▇▉')
+        parts = ' ▁▂▃▄▅▆▇▉'
 
     nums = list(nums)
     fraction = max(nums) / float(len(parts) - 1)
@@ -45,6 +45,23 @@ class Constant:
         self.__dict__[name] = value
 
 
+type_map = {
+    'str': str,
+    'string': str,
+    'text': str,
+    'int': int,
+    'integer': int,
+    'number': int,
+    'float': float,
+    'real': float,
+    'date': datetime.date,
+    'datetime': datetime.datetime,
+    'time': datetime.time,
+    'unknown': bytes,
+    'geometry': bytes
+
+}
+
 class StatSet(object):
     LOM = Constant()  # Level of Measurement, More or Less
 
@@ -53,18 +70,17 @@ class StatSet(object):
     LOM.INTERVAL = 'i'  # A number, for which subtraction is defined, but not division
     LOM.RATIO = 'r'  # A number, for which division is defined and zero means "nothing". Kelvin, but not Celsius
 
-    def __init__(self, parent, name, typ, n_rows=None):
+    def __init__(self, parent, name, typ, n_rows=None, distribution=False, descriptive=False, sample_values = False):
 
         self.parent = parent
         self.n_rows = n_rows
 
-        if isinstance(typ, string_types):
-            import datetime
-            m = dict(list(__builtins__.items()) + list(datetime.__dict__.items()))
-            if typ == 'unknown':
-                typ = binary_type
-            else:
-                typ = m[typ]
+        self.descriptive = descriptive
+        self.distribution = distribution
+        self.sample_values = sample_values
+
+        if isinstance(typ, str):
+            typ = type_map[typ]
 
         from datetime import date, time, datetime
 
@@ -79,7 +95,7 @@ class StatSet(object):
 
         if self.is_year or self.is_time or self.is_date:
             lom = StatSet.LOM.ORDINAL
-        elif typ == binary_type or typ == text_type:
+        elif typ == bytes or typ == str:
             lom = StatSet.LOM.NOMINAL
         elif typ == int or typ == float:
             lom = StatSet.LOM.INTERVAL
@@ -89,6 +105,7 @@ class StatSet(object):
         self.column_name = name
 
         self.lom = lom
+        self.type = typ
         self.n = 0
         self.counts = Counter()
         self.size = None
@@ -114,9 +131,9 @@ class StatSet(object):
 
         try:
             if v is None:
-                unival = u''
+                unival = ''
             else:
-                unival = u('{}').format(v)
+                unival = '{}'.format(v)
 
         except UnicodeError:
             unival = v.decode('ascii', 'replace')
@@ -134,7 +151,7 @@ class StatSet(object):
                 else:
                     self.counts[unival] += 1
 
-        elif self.is_numeric:
+        elif self.is_numeric and self.descriptive:
 
             # To build the histogram, we need to collect counts, but would rather
             # not collect all of the values. So, collect the first 5K, then use that
@@ -162,8 +179,7 @@ class StatSet(object):
                     self.counts['NULL'] += 1
                 else:
                     self.counts[unival] += 1
-        else:
-            assert False, 'Really should be one or the other ... '
+
 
     def _build_hist_bins(self):
         from math import sqrt
@@ -189,7 +205,7 @@ class StatSet(object):
             # Puts the saved entries into the hist bins.
             def fill_bins():
                 bins = [0] * self.num_bins
-                for v, count in iteritems(self.counts):
+                for v, count in self.counts.items():
                     float_v = _force_float(v)
                     if float_v >= self.bin_min and float_v <= self.bin_max and self.bin_width != 0:
                         bin_ = int((float_v - self.bin_min) / self.bin_width)
@@ -296,46 +312,81 @@ class StatSet(object):
         except ZeroDivisionError:
             skewness = kurtosis = float('nan')
 
-        return OrderedDict([
+        base_cols = [
             ('name', self.column_name),
             ('flags', self.flags),
+            ('type', self.type.__name__ ),
             ('lom', self.lom),
             ('count', self.n),
             ('nuniques', self.nuniques),
+            ('width', self.size),
+        ]
+
+        descriptive_cols = [
             ('mean', self.mean),
             ('std', self.stddev),
             ('min', self.min),
             ('p25', self.p25),
             ('p50', self.p50),
             ('p75', self.p75),
-            ('max', self.max),
-            ('width', self.size),
+            ('max', self.max)
+        ]
+
+        distribution_cols = [
             ('skewness', skewness),
             ('kurtosis', kurtosis),
             ('hist', self.bins),
-            ('text_hist',  text_hist(self.bins)),
+            ('text_hist', text_hist(self.bins)),
+        ]
+
+        sample_values_cols = [
             ('uvalues', self.uvalues)
-        ])
+        ]
+
+        return OrderedDict(
+           base_cols +
+           (descriptive_cols if self.descriptive else []) +
+           (distribution_cols if self.distribution else []) +
+           (sample_values_cols if self.sample_values else [])
+        )
 
 
 class Stats(object):
     """ Stats object reads rows from the input iterator, processes the row, and yields it back out"""
 
-    def __init__(self, schema, n_rows=None):
+    def __init__(self, source, schema, distribution=False, descriptive=False, sample_values=False,
+                 n_rows=None, sample_size=None):
+        """
+        :param source: Source iterator. Must return dict-like rows.
+        :param schema:
+        :param distribution: If True, generate distribution stats: histogram, skewness, kurtosis
+        :param descriptive: If True, generate descriptive stats: mean, std, min, max, quartiles.
+        :param n_rows: An estimate of the number of rows in the datasets, for sampling
+        :param sample_size: Number of rows to sample.
         """
 
-        Args:
-            shema (tuple of col_name, col_type):
-
-        """
-
+        self._source = source
         self._stats = {}
         self._func = None
         self._func_code = None
-        self._n_rows = n_rows  # May be reset in run()
+        self._n_rows = n_rows
+        self._sample_size = sample_size
+
+        self._distribution = distribution
+        self._descriptive = descriptive
+        self._sample_values = sample_values
+
+        if bool(self._sample_size) ^ bool(self._n_rows):
+            raise StatsError("If sample_size is specified, must also specify n_rows")
+
+        if self._sample_size is not None and self._n_rows is not None and (self._sample_size <= 0 or self._n_rows <= 0):
+            raise StatsError("If specified, both sample_size and n_rows must be positive and non-zero")
 
         for col_name, col_type in schema:
-            self._stats[col_name] = StatSet(self, col_name, col_type, n_rows)
+            self._stats[col_name] = StatSet(self, col_name, col_type, n_rows,
+                                            distribution=self._distribution,
+                                            descriptive=self._descriptive,
+                                            sample_values=self._sample_values)
 
         self._func, self._func_code = self.build()
 
@@ -353,7 +404,7 @@ class Stats(object):
 
         parts = []
 
-        for name in iterkeys(self._stats):
+        for name in self._stats.keys():
             if self._stats[name] is not None:
                 parts.append("stats['{name}'].add(row['{name}'])".format(name=name))
 
@@ -371,15 +422,10 @@ class Stats(object):
         return f, code
 
     def stats(self):
-        return [(name, self._stats[name]) for name, stat in iteritems(self._stats)]
+        return [(name, self._stats[name]) for name, stat in self._stats.items()]
 
-    def run(self, source, sample_from=None):
+    def run(self):
         """ Run the stats. The source must yield Row proxies.
-
-        :param source:
-        :param sample_from: If not None, an integer giving the total number of rows to select for cimputing stats. The
-            run will sample 10,000 rows. If none, the stats will run for all rows.
-        :return:
         """
 
         self._func, self._func_code = self.build()
@@ -395,33 +441,26 @@ class Stats(object):
                     'Failed to find key in row. headers = "{}", code = "{}" '
                     .format(list(row.keys()), self._func_code))
             except Exception as e:
-                raise
                 raise type(e)(
                     'General exception in stats. headers = "{}", code = "{}": {} '
                         .format(list(row.keys()), self._func_code, e))
 
-        self._n_rows = sample_from
-
         # Use all of the rows in the source
-        if sample_from is None:
-            for i, row in enumerate(source):
+        if self._sample_size is None:
+            for i, row in enumerate(self._source):
                 process_row(row)
-        # Use a sample of 10K rows, evenly distributed though the source
+        # Use a sample of rows, evenly distributed though the source
         else:
 
-            SAMPLE_ROWS = 10000
-            average_skip = sample_from / SAMPLE_ROWS
+            skip_rate = self._sample_size / self._n_rows
 
-            if average_skip > 4:
-                for i, row in enumerate(source):
-
-                    if i % average_skip == 0:
-                        process_row(row)
-
-            else:
-                # If the skip is smaller than 4, just process everything.
-                for i, row in enumerate(source):
-
+            i = 0
+            skip = skip_rate
+            for j, row in enumerate(self._source):
+                skip += skip_rate
+                if skip >= 1:
+                    skip -= 1
+                    i += 1
                     process_row(row)
 
         if i < 5000:  # Since the hist bins aren't built until 5K row
@@ -435,14 +474,31 @@ class Stats(object):
 
         rows = []
 
-        for name, stats in iteritems(self._stats):
+        delete_flags = not any(stats.dict.get('flags','').strip() for stats in self._stats.values() )
+
+        for name, stats in self._stats.items():
             stats_dict = stats.dict
-            del stats_dict['uvalues']
-            #stats_dict['hist'] = text_hist(stats_dict['hist'], True)
+
+            if delete_flags:
+                try:
+                    del stats_dict['flags']
+                except KeyError:
+                    pass
+
+            if 'text_hist' in stats_dict:
+                stats_dict['hist'] = stats_dict['text_hist']
+                del stats_dict['text_hist']
+
+            if 'uvalues' in stats_dict:
+                trunc_values = { k[:20] + (k[20:] and '..'):v for k,v in stats_dict['uvalues'].items()}
+                stats_dict['uvalues'] = trunc_values
+
             if not rows:
                 rows.append(list(stats_dict.keys()))
 
             rows.append(list(stats_dict.values()))
+
+
         if rows:
             table = tabulate(rows[1:], rows[0], tablefmt='pipe')
             return 'Statistics \n' + table

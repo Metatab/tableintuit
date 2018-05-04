@@ -35,6 +35,7 @@ classifiers = [
     'License :: OSI Approved :: MIT License',
     'Operating System :: OS Independent',
     'Programming Language :: Python',
+    'Programming Language :: Python :: 3.4',
     'Topic :: Software Development :: Libraries :: Python Modules',
 ]
 

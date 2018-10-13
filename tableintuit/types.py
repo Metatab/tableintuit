@@ -218,7 +218,7 @@ class Column(object):
                     if (self.count < 1000 or self.date_successes != 0) and any((c in b('-/:T')) for c in v):
                         try:
                             maybe_dt = parser.parse(v, default=datetime.datetime.fromtimestamp(0))
-                        except (TypeError, ValueError, OSError): # Windows throws an OSError
+                        except (TypeError, ValueError, OSError, OverflowError): # Windows throws an OSError
                             maybe_dt = None
 
                         if maybe_dt:

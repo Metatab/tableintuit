@@ -148,6 +148,9 @@ class RowIntuiter(object):
             # not have a large number of changes in subsequent rows.
             for i in range(tests):
 
+                if not rows:
+                    continue
+
                 max_changes = len(rows[0]) / 4  # Data row should have fewer than 25% changes compared to next
 
                 test_rows_slice = rows[i: i + test_rows]

@@ -397,7 +397,6 @@ class TypeIntuiter(object):
 
         results = self.results_table()
 
-
         if len(results) > 1:
             o = '\n' + text_type(tabulate(results[1:], results[0], tablefmt='pipe'))
         else:

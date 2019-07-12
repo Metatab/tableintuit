@@ -8,14 +8,15 @@ Guess the whether rows in a collection are header, comments, footers, etc
 
 """
 
-from collections import deque, OrderedDict
 import datetime
-
 import logging
+import math
+from collections import deque, OrderedDict
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-from six import string_types, iteritems, binary_type, text_type, b
+from six import string_types, binary_type, text_type, b
 
 
 class NoMatchError(Exception):
@@ -23,7 +24,6 @@ class NoMatchError(Exception):
 
 
 class unknown(binary_type):
-
     __name__ = 'unknown'
 
     def __new__(cls):
@@ -35,8 +35,8 @@ class unknown(binary_type):
     def __eq__(self, other):
         return binary_type(self) == binary_type(other)
 
-class geotype(binary_type):
 
+class geotype(binary_type):
     __name__ = 'geo'
 
     def __new__(cls):
@@ -47,6 +47,15 @@ class geotype(binary_type):
 
     def __eq__(self, other):
         return binary_type(self) == binary_type(other)
+
+
+nans = ['#N/A', '#N/A', 'N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan',
+        '1.#IND', '1.#QNAN', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null']
+
+
+def test_nan(v):
+    v = v.decode('ascii') if isinstance(v, bytes) else v
+    return int(v is math.nan or v in nans)
 
 
 def test_float(v):
@@ -139,12 +148,13 @@ def test_date(v):
 
     return 1
 
-def test_geo(v):
 
+def test_geo(v):
     return 0
 
 
 tests = [
+    (math.nan, test_nan),
     (int, test_int),
     (float, test_float),
     (binary_type, test_string),
@@ -184,7 +194,7 @@ class Column(object):
 
         self.count += 1
 
-        if v is None:
+        if v is None or v is '':
             self.type_counts[None] += 1
             return None
 
@@ -218,7 +228,7 @@ class Column(object):
                     if (self.count < 1000 or self.date_successes != 0) and any((c in b('-/:T')) for c in v):
                         try:
                             maybe_dt = parser.parse(v, default=datetime.datetime.fromtimestamp(0))
-                        except (TypeError, ValueError, OSError, OverflowError): # Windows throws an OSError
+                        except (TypeError, ValueError, OSError, OverflowError):  # Windows throws an OSError
                             maybe_dt = None
 
                         if maybe_dt:
@@ -250,7 +260,7 @@ class Column(object):
         # If it is more than 5% str, it's a str
 
         try:
-            if self.type_ratios.get(text_type,0) + self.type_ratios.get(binary_type,0) > .05:
+            if self.type_ratios.get(text_type, 0) + self.type_ratios.get(binary_type, 0) > .05:
                 if self.type_counts[text_type] > 0:
                     return text_type, False
 
@@ -259,7 +269,6 @@ class Column(object):
         except TypeError as e:
             # This is probably the result of the type being unknown
             pass
-
 
         if self.type_counts[datetime.datetime] > 0:
             num_type = datetime.datetime
@@ -274,6 +283,9 @@ class Column(object):
             num_type = float
 
         elif self.type_counts[int] > 0:
+            # Int columns can't represent Nan, but float can
+            if self.type_counts[math.nan] > 0:
+                num_type = float
             num_type = int
 
         elif self.type_counts[text_type] > 0:
@@ -310,6 +322,7 @@ class Column(object):
     def __repr__(self):
         return "<Column {} {} {}>".format(self.position, self.header, self.resolved_type_name)
 
+
 class TypeIntuiter(object):
     """Determine the types of rows in a table."""
     header = None
@@ -320,7 +333,7 @@ class TypeIntuiter(object):
 
     def process_header(self, row):
 
-        header = row # Huh? Don't remember what this is for.
+        header = row  # Huh? Don't remember what this is for.
 
         for i, value in enumerate(row):
             if i not in header:
@@ -389,7 +402,6 @@ class TypeIntuiter(object):
         """return true if none of the columns have a resolved type of """
         pass
 
-
     def __str__(self):
         from tabulate import tabulate
 
@@ -450,7 +462,7 @@ class TypeIntuiter(object):
 
     def results_table(self):
 
-        fields = 'position header length resolved_type has_codes count ints floats strs unicode nones datetimes dates times '.split()
+        fields = 'position header length resolved_type has_codes count ints floats strs unicode nones nans datetimes dates times '.split()
 
         header = list(fields)
         # Shorten a few of the header names
@@ -458,7 +470,7 @@ class TypeIntuiter(object):
         header[2] = 'size'
         header[4] = 'codes'
         header[9] = 'uni'
-        header[11] = 'dt'
+        header[12] = 'dt'
 
         rows = list()
 
@@ -471,7 +483,7 @@ class TypeIntuiter(object):
 
     def to_rows(self):
 
-        for k,v in self.columns.items():
+        for k, v in self.columns.items():
             d = {
                 'position': v.position,
                 'header': v.header,
@@ -484,11 +496,10 @@ class TypeIntuiter(object):
                 'strs': v.type_counts.get(binary_type, None),
                 'unicode': v.type_counts.get(text_type, None),
                 'nones': v.type_counts.get(None, None),
+                'nans': v.type_counts.get(math.nan, None),
                 'datetimes': v.type_counts.get(datetime.datetime, None),
                 'dates': v.type_counts.get(datetime.date, None),
                 'times': v.type_counts.get(datetime.time, None),
                 'strvals': b(',').join(list(v.strings)[:20])
             }
             yield d
-
-

@@ -1,10 +1,17 @@
 import unittest
 
-from appurl import parse_app_url
+# Tabulate 0.8.3 has invalid escape sequences
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+from rowgenerators import parse_app_url
 from csv import DictReader
-from rowgenerators import get_generator, SelectiveRowGenerator
+from rowgenerators import get_generator
+from rowgenerators.source import SelectiveRowGenerator
 from tableintuit import RowIntuiter, RowIntuitError
 from tableintuit import TypeIntuiter, Stats
+
+
 
 def df(*v):
     """Return a path to a test data file"""
@@ -105,7 +112,7 @@ class BasicTest(unittest.TestCase):
 
         rows = [['header1']] + [['header2']] + [[i] for i in range(10)]
 
-        rg = SelectiveRowGenerator(rows, start=5, headers=[0, 1], comments=[2, 3], end=9)
+        rg = SelectiveRowGenerator(rows, start=5, header_lines=[0, 1], comments=[2, 3], end=9)
 
         self.assertEquals([[u'header1 header2'], [3], [4], [5], [6], [7], [8], [9]], list(rg))
         self.assertEqual([['header1'], ['header2']], rg.headers)
@@ -127,6 +134,18 @@ class BasicTest(unittest.TestCase):
         # Second is the first data row, which is actually the 6th row in the file
         self.assertEqual([u'1', u'0O0P01', u'1447', u'13.6176070905', u'42.2481751825', u'8.272140707'],
                          rows[1])
+
+    def test_null_intuition(self):
+
+        def run_ti(path):
+            rg = get_generator(path)
+            ti = TypeIntuiter().run(rg)
+
+            return ti
+
+        ti = run_ti(df('na.csv'))
+        print(ti)
+
 
     def test_type_intuition(self):
 

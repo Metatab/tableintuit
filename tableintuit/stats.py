@@ -427,6 +427,7 @@ class Stats(object):
     def run(self):
         """ Run the stats. The source must yield Row proxies.
         """
+        from itertools import islice
 
         self._func, self._func_code = self.build()
 
@@ -436,18 +437,38 @@ class Stats(object):
                 self._func(self._stats, row)
             except TypeError as e:
                 raise TypeError("Failed for '{}'; {}".format(self._func_code, e))
-            except KeyError:
+            except KeyError as e:
                 raise KeyError(
-                    'Failed to find key in row. headers = "{}", code = "{}" '
-                    .format(list(row.keys()), self._func_code))
+                    'Failed to find key in row. headers = "{}", code = "{}": {} '
+                    .format(list(row.keys()), self._func_code, e))
             except Exception as e:
                 raise type(e)(
                     'General exception in stats. headers = "{}", code = "{}": {} '
                         .format(list(row.keys()), self._func_code, e))
 
+        # What does the source produce?
+        rows = list(islice(self._source, 2))
+
+        if isinstance(rows[0], (list, tuple)):
+            from rowgenerators.rowproxy import RowProxy
+            def source_adapter():
+                rp = None
+                for i, row in enumerate(self._source):
+                    if i == 0:
+                        rp = RowProxy(row)
+                    else:
+                        rp.set_row(row)
+                        yield rp
+
+            source = source_adapter()
+        else:
+            # Assume it is dict-like
+            source = self._source
+
+
         # Use all of the rows in the source
         if self._sample_size is None:
-            for i, row in enumerate(self._source):
+            for i, row in enumerate(source):
                 process_row(row)
         # Use a sample of rows, evenly distributed though the source
         else:
@@ -456,7 +477,7 @@ class Stats(object):
 
             i = 0
             skip = skip_rate
-            for j, row in enumerate(self._source):
+            for j, row in enumerate(source):
                 skip += skip_rate
                 if skip >= 1:
                     skip -= 1

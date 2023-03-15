@@ -7,23 +7,21 @@
 Guess the whether rows in a collection are header, comments, footers, etc
 
 """
-
+import numpy as np
 import datetime
 import logging
 import math
-from collections import deque, OrderedDict
+from collections import deque, OrderedDict, defaultdict
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
-from six import string_types, binary_type, text_type, b
 
 
 class NoMatchError(Exception):
     pass
 
 
-class unknown(binary_type):
+class unknown(bytes):
     __name__ = 'unknown'
 
     def __new__(cls):
@@ -33,10 +31,10 @@ class unknown(binary_type):
         return self.__name__
 
     def __eq__(self, other):
-        return binary_type(self) == binary_type(other)
+        return bytes(self) == bytes(other)
 
 
-class geotype(binary_type):
+class geotype(bytes):
     __name__ = 'geo'
 
     def __new__(cls):
@@ -46,16 +44,25 @@ class geotype(binary_type):
         return self.__name__
 
     def __eq__(self, other):
-        return binary_type(self) == binary_type(other)
-
+        return bytes(self) == bytes(other)
 
 nans = ['#N/A', '#N/A', 'N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan',
         '1.#IND', '1.#QNAN', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null']
 
-
 def test_nan(v):
-    v = v.decode('ascii') if isinstance(v, bytes) else v
-    return int(v is math.nan or v in nans)
+    from math import isnan
+
+    if isinstance(v, bool):
+        return False
+
+    elif isinstance(v, str):
+        if v in nans:
+            return math.nan
+
+    elif isinstance(v, float) and isnan(v):
+        return math.nan
+
+    return False
 
 
 def test_float(v):
@@ -63,11 +70,13 @@ def test_float(v):
     # if v and v[0]  == '0' and len(v) > 1:
     # return 0
 
+    if isinstance(v, (bool, np.ndarray)):
+        return False
     try:
         float(v)
-        return 1
+        return float
     except:
-        return 0
+        return False
 
 
 def test_int(v):
@@ -75,90 +84,97 @@ def test_int(v):
     # if v and v[0] == '0' and len(v) > 1:
     # return 0
 
+    if isinstance(v, (bool, np.ndarray)):
+        return False
+
     try:
-        if float(v) == int(float(v)):
-            return 1
+        if float(v) == int(float(v)) :
+            return int
         else:
-            return 0
+            return False
     except:
-        return 0
+        return False
 
 
 def test_string(v):
-    if isinstance(v, string_types):
-        return 1
-    if isinstance(v, binary_type):
-        return 1
+    if isinstance(v, str):
+        return str
     else:
-        return 0
+        return False
 
 
 def test_datetime(v):
-    """Test for ISO datetime."""
-    if not isinstance(v, string_types):
-        return 0
+    """"""
+    from dateutil import parser
 
-    if len(v) > 22:
-        # Not exactly correct; ISO8601 allows fractional seconds
-        # which could result in a longer string.
-        return 0
+    try:
+        dt = parser.parse(v)
 
-    if '-' not in v and ':' not in v:
-        return 0
+        if dt.time() == datetime.datetime.fromtimestamp(0).time():
+            type_ = datetime.date
+        elif dt.date() == datetime.datetime.fromtimestamp(0).date():
+            type_ = datetime.time
+        else:
+            type_ = datetime.datetime
 
-    for c in set(v):  # Set of Unique characters
-        if not c.isdigit() and c not in 'T:-Z':
-            return 0
-
-    return 1
-
-
-def test_time(v):
-    if not isinstance(v, string_types):
-        return 0
-
-    if len(v) > 15:
-        return 0
-
-    if ':' not in v:
-        return 0
-
-    for c in set(v):  # Set of Unique characters
-        if not c.isdigit() and c not in 'T:Z.':
-            return 0
-
-    return 1
-
-
-def test_date(v):
-    if not isinstance(v, string_types):
-        return 0
-
-    if len(v) > 10:
-        # Not exactly correct; ISO8601 allows fractional seconds
-        # which could result in a longer string.
-        return 0
-
-    if '-' not in v:
-        return 0
-
-    for c in set(v):  # Set of Unique characters
-        if not c.isdigit() and c not in '-':
-            return 0
-
-    return 1
+        return type_
+    except:
+        return False
 
 
 def test_geo(v):
-    return 0
+    return False
 
+
+def test_none(v):
+    if v is None:
+        return None
+    else:
+        return False
+
+
+def test_ascii(v):
+    try:
+        v.encode('ascii')
+        return True
+    except:
+        return False
+
+
+def test_latin1(v):
+    try:
+        v.encode('latin1')
+        return True
+    except:
+        return False
+
+def test_object(v):
+    if isinstance(v, object):
+        return object
+    else:
+        return False
+
+def test_ndarray(v):
+    if isinstance(v, np.ndarray):
+        return np.ndarray
+    else:
+        return False
+
+def test_bool(v):
+    return isinstance(v, bool) and bool
 
 tests = [
+    (None, test_none),
     (math.nan, test_nan),
     (int, test_int),
     (float, test_float),
-    (binary_type, test_string),
-    (geotype, test_geo)
+    (datetime.datetime, test_datetime),
+    (str, test_string),
+    (geotype, test_geo),
+    (np.ndarray, test_ndarray),
+    (bool, test_bool),
+    (object, test_object),
+
 ]
 
 
@@ -172,12 +188,8 @@ class Column(object):
     strings = None
 
     def __init__(self):
-        self.type_counts = {k: 0 for k, v in tests}
-        self.type_counts[datetime.datetime] = 0
-        self.type_counts[datetime.date] = 0
-        self.type_counts[datetime.time] = 0
-        self.type_counts[None] = 0
-        self.type_counts[text_type] = 0
+        self.type_counts = defaultdict(int)
+        self.str_type_counts = defaultdict(int)
         self.strings = deque(maxlen=1000)
         self.position = None
         self.header = None
@@ -190,64 +202,30 @@ class Column(object):
         self.type_counts[t] += 1
 
     def test(self, v):
-        from dateutil import parser
 
         self.count += 1
 
-        if v is None or v is '':
-            self.type_counts[None] += 1
-            return None
-
-        try:
-            v = '{}'.format(v).encode('ascii')
-        except UnicodeEncodeError:
-            self.type_counts[text_type] += 1
-            return text_type
-
-        self.length = max(self.length, len(v))
-
-        try:
-            v = v.strip()
-        except AttributeError:
-            pass
-
-        if v == '':
-            self.type_counts[None] += 1
-            return None
-
         for test, testf in tests:
-            t = testf(v)
+            type_ = testf(v)
+            #print(test, testf, type_)
+            if type_ is not False:
 
-            if t > 0:
-                type_ = test
+                if type_ is str:
 
-                if test == binary_type:
                     if v not in self.strings:
                         self.strings.append(v)
 
-                    if (self.count < 1000 or self.date_successes != 0) and any((c in b('-/:T')) for c in v):
-                        try:
-                            maybe_dt = parser.parse(v, default=datetime.datetime.fromtimestamp(0))
-                        except (TypeError, ValueError, OSError, OverflowError):  # Windows throws an OSError
-                            maybe_dt = None
-
-                        if maybe_dt:
-                            # Check which parts of the default the parser didn't change to find
-                            # the real type
-                            # HACK The time check will be wrong for the time of
-                            # the start of the epoch, 16:00.
-                            if maybe_dt.time() == datetime.datetime.fromtimestamp(0).time():
-                                type_ = datetime.date
-                            elif maybe_dt.date() == datetime.datetime.fromtimestamp(0).date():
-                                type_ = datetime.time
-                            else:
-                                type_ = datetime.datetime
-
-                            self.date_successes += 1
+                    self.str_type_counts['ascii'] += test_ascii(v)
+                    self.str_type_counts['latin1'] += test_latin1(v)
+                    self.length = max(self.length, len(v))
 
                 self.type_counts[type_] += 1
 
                 return type_
+
+        return unknown
+
+
 
     def _resolved_type(self):
         """Return the type for the columns, and a flag to indicate that the
@@ -260,49 +238,25 @@ class Column(object):
         # If it is more than 5% str, it's a str
 
         try:
-            if self.type_ratios.get(text_type, 0) + self.type_ratios.get(binary_type, 0) > .05:
-                if self.type_counts[text_type] > 0:
-                    return text_type, False
+            if self.type_ratios.get(str, 0) + self.type_ratios.get(bytes, 0) > .05:
+                if self.type_counts[str] > 0:
+                    return str, False
 
-                elif self.type_counts[binary_type] > 0:
-                    return binary_type, False
         except TypeError as e:
             # This is probably the result of the type being unknown
             pass
 
-        if self.type_counts[datetime.datetime] > 0:
-            num_type = datetime.datetime
+        for type_ in TypeIntuiter.type_order.keys():
 
-        elif self.type_counts[datetime.date] > 0:
-            num_type = datetime.date
+            if self.type_counts[type_] > 0:
+                col_type = type_
 
-        elif self.type_counts[datetime.time] > 0:
-            num_type = datetime.time
-
-        elif self.type_counts[float] > 0:
-            num_type = float
-
-        elif self.type_counts[int] > 0:
-            # Int columns can't represent Nan, but float can
-            if self.type_counts[math.nan] > 0:
-                num_type = float
-            num_type = int
-
-        elif self.type_counts[text_type] > 0:
-            num_type = text_type
-
-        elif self.type_counts[binary_type] > 0:
-            num_type = binary_type
-
-        else:
-            num_type = unknown
-
-        if self.type_counts[binary_type] > 0 and num_type != binary_type:
+        if self.type_counts[str] > 0 and col_type != str:
             has_codes = True
         else:
             has_codes = False
 
-        return num_type, has_codes
+        return col_type, has_codes
 
     @property
     def resolved_type(self):
@@ -328,6 +282,19 @@ class TypeIntuiter(object):
     header = None
     counts = None
 
+    # Names of intuited types, and the order they appear in tables.
+    type_order = {
+         datetime.datetime: 'dt',
+         datetime.date: 'date',
+         datetime.time: 'time',
+         float: 'float',
+         int: 'int',
+         str: 'str',
+         bool: 'bool',
+         np.ndarray: 'nda',
+         object: 'obj',
+         None: 'None'}
+
     def __init__(self):
         self._columns = OrderedDict()
 
@@ -350,6 +317,7 @@ class TypeIntuiter(object):
                 if i not in self._columns:
                     self._columns[i] = Column()
                     self._columns[i].position = i
+
                 self._columns[i].test(value)
 
             except Exception as e:
@@ -410,7 +378,7 @@ class TypeIntuiter(object):
         results = self.results_table()
 
         if len(results) > 1:
-            o = '\n' + text_type(tabulate(results[1:], results[0], tablefmt='pipe'))
+            o = '\n' + str(tabulate(results[1:], results[0], tablefmt='pipe'))
         else:
             o = ''
 
@@ -419,12 +387,12 @@ class TypeIntuiter(object):
     @staticmethod
     def normalize_type(typ):
 
-        if isinstance(typ, string_types):
+        if isinstance(typ, str):
             import datetime
 
             m = dict(list(__builtins__.items()) + list(datetime.__dict__.items()))
             if typ == 'unknown':
-                typ = binary_type
+                typ = bytes
             else:
                 typ = m[typ]
 
@@ -462,44 +430,52 @@ class TypeIntuiter(object):
 
     def results_table(self):
 
-        fields = 'position header length resolved_type has_codes count ints floats strs unicode nones nans datetimes dates times '.split()
+        fields = 'pos header len rtype codes N '.split()
 
-        header = list(fields)
-        # Shorten a few of the header names
-        header[0] = '#'
-        header[2] = 'size'
-        header[4] = 'codes'
-        header[9] = 'uni'
-        header[12] = 'dt'
+        fields += [e for e in self.all_types]
+
+        # Translate some of the names for the table header
+        header = [self.type_order.get(e, e) for e in fields]
 
         rows = list()
 
         rows.append(header)
 
         for d in self.to_rows():
-            rows.append([d[k] for k in fields])
+            try:
+                rows.append([d[k] for k in fields])
+            except KeyError:
+                print(d)
+                raise
 
         return rows
 
+    @property
+    def all_types(self):
+        all_types = set()
+        for c in self.columns.values():
+            for type_, n in c.type_counts.items():
+                if n > 0:
+                    all_types.add(type_)
+
+        return [ e for e in self.type_order.keys() if e in all_types]
+
     def to_rows(self):
+        all_types = self.all_types
 
         for k, v in self.columns.items():
             d = {
-                'position': v.position,
+                'pos': v.position,
                 'header': v.header,
-                'length': v.length,
-                'resolved_type': v.resolved_type_name,
-                'has_codes': v.has_codes,
-                'count': v.count,
-                'ints': v.type_counts.get(int, None),
-                'floats': v.type_counts.get(float, None),
-                'strs': v.type_counts.get(binary_type, None),
-                'unicode': v.type_counts.get(text_type, None),
-                'nones': v.type_counts.get(None, None),
-                'nans': v.type_counts.get(math.nan, None),
-                'datetimes': v.type_counts.get(datetime.datetime, None),
-                'dates': v.type_counts.get(datetime.date, None),
-                'times': v.type_counts.get(datetime.time, None),
-                'strvals': b(',').join(list(v.strings)[:20])
+                'len': v.length,
+                'rtype': v.resolved_type_name,
+                'codes': v.has_codes,
+                'N': v.count,
             }
+
+            for type_ in all_types:
+                d[type_] = v.type_counts[type_]
+
+            d['strvals'] =  ','.join(list(v.strings)[:20])
+
             yield d

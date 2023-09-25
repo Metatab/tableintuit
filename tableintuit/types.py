@@ -235,6 +235,8 @@ class Column(object):
         self.type_ratios = {test: (float(self.type_counts[test]) / float(self.count)) if self.count else None
                             for test, testf in tests + [(None, None)]}
 
+        sorted_tr = sorted(self.type_ratios.items(), key=lambda x: x[1] or 0, reverse=True)
+
         # If it is more than 5% str, it's a str
 
         try:
@@ -246,15 +248,17 @@ class Column(object):
             # This is probably the result of the type being unknown
             pass
 
-        for type_ in TypeIntuiter.type_order.keys():
 
-            if self.type_counts[type_] > 0:
-                col_type = type_
-
-        if self.type_counts[str] > 0 and col_type != str:
+        if self.type_counts[str] > 0:
             has_codes = True
         else:
             has_codes = False
+
+        # If the leading type is an int, but there are also floats, it's a float
+        if sorted_tr[0][0] == int and self.type_ratios[float] > 0:
+            col_type = float
+        else:
+            col_type = sorted_tr[0][0]
 
         return col_type, has_codes
 
@@ -347,6 +351,7 @@ class TypeIntuiter(object):
                 continue
 
             self.process_row(i, row)
+
 
         return self
 
